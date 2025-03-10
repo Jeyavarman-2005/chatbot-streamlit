@@ -249,6 +249,7 @@ def calculate_total_production_loss_and_repair_time(machine_type=None, issue=Non
     }
 
 # Main function to handle user queries
+# Main function to handle user queries
 @cl.on_message
 async def main(message):
     user_query = message.content

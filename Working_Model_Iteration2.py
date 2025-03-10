@@ -139,57 +139,66 @@ def search_machine_in_spreadsheet(machine_name):
     
     return None  # Return None if no match is found
 
-# Function to get the latest details of a specific machine by its ID
-def get_latest_machine_details_by_id(data, machine_id):
-    latest_entry = None
-    latest_date = None
-    
+# Function to get description of a specific machine by ID
+def get_machine_description_by_id(data, machine_id):
     for row in data:
         if row.get("ID", "").lower() == machine_id.lower():
-            date_str = row.get("Date of Repair", "")
-            if date_str:
-                date = datetime.strptime(date_str, "%Y-%m-%d")  # Adjust the date format as per your sheet
-                if latest_date is None or date > latest_date:
-                    latest_date = date
-                    latest_entry = row
-    
-    return latest_entry
-
-# Function to extract machine ID from the user query
-def extract_machine_id(user_query):
-    # Use regex to find patterns like "mm001", "MM001", "mm 001", etc.
-    machine_id_match = re.search(r'\b(mm|MM)?\s?\d{3}\b', user_query)
-    if machine_id_match:
-        return machine_id_match.group().replace(" ", "").lower()  # Normalize the machine ID
+            return row
     return None
+
+# Function to count CNC machines
+def count_cnc_machines(data):
+    count = 0
+    for row in data:
+        if "CNC" in row.get("Machine Name", ""):
+            count += 1
+    return count
+
+# Function to list machines repaired by a specific technician
+def get_machines_repaired_by_technician(data, technician_name):
+    machines = []
+    for row in data:
+        if row.get("Technician Name", "").lower() == technician_name.lower():
+            machines.append(row.get("Machine Name", ""))
+    return machines
+
+# Function to list machines repaired before a specific year
+def get_machines_repaired_before_year(data, year):
+    machines = []
+    for row in data:
+        date_str = row.get("Date of Repair", "")
+        if date_str:
+            date = datetime.strptime(date_str, "%Y-%m-%d")
+            if date.year < year:
+                machines.append(row.get("Machine Name", ""))
+    return machines
 
 # Function to detect intent from user query
 def detect_intent(user_query):
     user_query = user_query.lower()
     
-    # Check if the query contains a machine ID
-    machine_id = extract_machine_id(user_query)
-    if machine_id:
-        return "get_machine_details_by_id", machine_id
-    
     # Intent: Count CNC machines
     if "cnc" in user_query and ("count" in user_query or "number" in user_query or "how many" in user_query):
-        return "count_cnc_machines", None
+        return "count_cnc_machines"
     
     # Intent: Count total machines
     if ("total" in user_query or "number" in user_query or "how many" in user_query) and "machine" in user_query:
-        return "count_total_machines", None
+        return "count_total_machines"
     
     # Intent: Machines repaired before a specific year
     if "repaired before" in user_query or "repaired till" in user_query:
-        return "machines_repaired_before_year", None
+        return "machines_repaired_before_year"
+    
+    # Intent: Get machine description by ID
+    if "description" in user_query and "machine" in user_query:
+        return "get_machine_description_by_id"
     
     # Intent: Machines repaired by a specific technician
     if "repaired by" in user_query or "technician" in user_query:
-        return "get_machines_repaired_by_technician", None
+        return "get_machines_repaired_by_technician"
     
     # Default intent: General query
-    return "general_query", None
+    return "general_query"
 
 # Main function to handle user queries
 @cl.on_message
@@ -201,27 +210,14 @@ async def main(message):
     data, _ = get_machine_issues()
     machine_names = list(set(row.get("Machine Name", "") for row in data))
 
-    # Detect intent and extract machine ID (if any)
-    intent, machine_id = detect_intent(user_query)
+    # Extract keywords from the user query
+    keywords = extract_keywords(user_query, machine_names)
+
+    # Detect intent from the user query
+    intent = detect_intent(user_query)
 
     # Handle specific intents
-    if intent == "get_machine_details_by_id":
-        result = get_latest_machine_details_by_id(data, machine_id)
-        if result:
-            response = (
-                f"**🔧 Machine Name:** {result.get('Machine Name', 'N/A')}\n\n"
-                f"**🔧 Problem:** {result.get('Issue Description', 'N/A')}\n\n"
-                f"**⚠️ Root Cause:** {result.get('Root Cause', 'N/A')}\n\n"
-                f"**💡 Solution Applied:** {result.get('Solution Applied', 'N/A')}\n\n"
-                f"**👷 Technician:** {result.get('Technician Name', 'N/A')}\n"
-                f"📅 **Date of Repair:** {result.get('Date of Repair', 'N/A')}\n"
-                f"⏳ **Time Taken:** {result.get('Time Taken (in hours)', 'N/A')} hours\n"
-                f"📉 **Production Loss:** {result.get('Production Loss ()', 'N/A')}%\n\n"
-                f"📝 **Additional Info:** {result.get('Additional Information', 'None')}"
-            )
-        else:
-            response = f"No machine found with ID {machine_id}."
-    elif intent == "count_cnc_machines":
+    if intent == "count_cnc_machines":
         count = count_cnc_machines(data)
         response = f"There are {count} CNC machines in the list."
     elif intent == "count_total_machines":
@@ -237,6 +233,23 @@ async def main(message):
             response = f"There are {count} machines repaired before {year}."
         else:
             response = "Please specify a valid year in your query."
+    elif intent == "get_machine_description_by_id":
+        machine_id = user_query.lower().split("description")[1].strip()
+        result = get_machine_description_by_id(data, machine_id)
+        if result:
+            response = (
+                f"**🔧 Machine Name:** {result.get('Machine Name', 'N/A')}\n\n"
+                f"**🔧 Problem:** {result.get('Issue Description', 'N/A')}\n\n"
+                f"**⚠️ Root Cause:** {result.get('Root Cause', 'N/A')}\n\n"
+                f"**💡 Solution Applied:** {result.get('Solution Applied', 'N/A')}\n\n"
+                f"**👷 Technician:** {result.get('Technician Name', 'N/A')}\n"
+                f"📅 **Date of Repair:** {result.get('Date of Repair', 'N/A')}\n"
+                f"⏳ **Time Taken:** {result.get('Time Taken (in hours)', 'N/A')} hours\n"
+                f"📉 **Production Loss:** {result.get('Production Loss ()', 'N/A')}%\n\n"
+                f"📝 **Additional Info:** {result.get('Additional Information', 'None')}"
+            )
+        else:
+            response = f"No machine found with ID {machine_id}."
     elif intent == "get_machines_repaired_by_technician":
         technician_name = user_query.lower().split("repaired by")[1].strip()
         machines = get_machines_repaired_by_technician(data, technician_name)
