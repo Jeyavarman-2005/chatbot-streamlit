@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 from datetime import datetime
 from collections import defaultdict, Counter
 
-
+# Load environment variables from .env file (if using locally)
+load_dotenv()
 
 # Retrieve values from environment variables
 COHERE_API_KEY = os.getenv("API_KEY")  # Retrieve Cohere API key from environment variable
@@ -28,8 +29,8 @@ co = cohere.Client(COHERE_API_KEY)
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 SPREADSHEET_NAME = "Untitled spreadsheet"  # Replace with your actual Google Sheet name
 
-# Load Google credentials from the file path specified in the environment variable
-google_credentials = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+# Load Google credentials from the environment variable
+google_credentials = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
 creds = Credentials.from_service_account_info(google_credentials, scopes=SCOPE)
 client = gspread.authorize(creds)
 sheet = client.open(SPREADSHEET_NAME).sheet1
