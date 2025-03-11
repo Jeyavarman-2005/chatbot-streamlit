@@ -2,6 +2,3 @@ chainlit
 gspread
 cohere
 google-auth
-os
-json
-re
