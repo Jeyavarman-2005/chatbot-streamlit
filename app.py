@@ -484,7 +484,7 @@ async def main(message):
             f"**Date of Repair:** {latest_record.get('Date of Repair', 'N/A')}\n"
             f"**Time Taken (in hours):** {latest_record.get('Time Taken (in hours)', 'N/A')}\n"
             f"**Production Loss (%):** {latest_record.get('Production Loss (%)', 'N/A')}\n"
-            f"**Additional Notes:** {latest_record.get('Additional Note\'s', 'N/A')}"
+            f"**Additional Notes:** {latest_record.get('Additional Notes', 'N/A')}"
         )
 
     # Send the response back to the Chainlit UI
