@@ -9,37 +9,42 @@ from dotenv import load_dotenv
 from datetime import datetime
 from collections import defaultdict, Counter
 
-# Load environment variables from .env file (if using locally)
+# Load environment variables from .env file (useful for local testing)
 load_dotenv()
 
 # Retrieve values from environment variables
-COHERE_API_KEY = os.getenv("API_KEY")  # Retrieve Cohere API key from environment variable
-CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS")  # Retrieve Google credentials file path from environment variable
-
-# Check if environment variables are set
-if not COHERE_API_KEY:
-    raise ValueError("COHERE_API_KEY environment variable is not set.")
-if not CREDENTIALS_FILE:
-    raise ValueError("GOOGLE_CREDENTIALS environment variable is not set.")
-
-# Initialize Cohere API Key for getting user-query understandability
-co = cohere.Client(COHERE_API_KEY)
-
-# Google Sheet Integration using Google Cloud Console
-SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+COHERE_API_KEY = os.getenv("API_KEY")  
+GOOGLE_CREDENTIALS = os.getenv("GOOGLE_CREDENTIALS")  # Must be a single-line JSON string
 SPREADSHEET_NAME = "Untitled spreadsheet"  # Replace with your actual Google Sheet name
 
-# Load Google credentials from the environment variable
-google_credentials = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
+# Ensure required environment variables are set
+if not COHERE_API_KEY:
+    raise ValueError("ERROR: COHERE_API_KEY environment variable is not set.")
+if not GOOGLE_CREDENTIALS:
+    raise ValueError("ERROR: GOOGLE_CREDENTIALS environment variable is not set.")
+
+# Initialize Cohere API client
+co = cohere.Client(COHERE_API_KEY)
+
+# Google Sheets API Scope
+SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+# Load Google credentials safely
+try:
+    google_credentials = json.loads(GOOGLE_CREDENTIALS)
+    if "private_key" not in google_credentials or not google_credentials["private_key"]:
+        raise ValueError("ERROR: Invalid GOOGLE_CREDENTIALS JSON (Missing private_key).")
+except json.JSONDecodeError as e:
+    raise ValueError(f"ERROR: Failed to parse GOOGLE_CREDENTIALS JSON: {e}")
+
+# Authenticate with Google Sheets
 creds = Credentials.from_service_account_info(google_credentials, scopes=SCOPE)
 client = gspread.authorize(creds)
 sheet = client.open(SPREADSHEET_NAME).sheet1
 
 @cl.on_message
-async def main(message: str):
-    # Your chatbot logic here
-    response = f"Received: {message}"
-    await cl.Message(content=response).send()
+async def main(message: cl.Message):
+    await cl.Message(content="Hello! How can I help you?").send()
 
 cached_data = None
 
